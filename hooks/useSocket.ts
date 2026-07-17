@@ -49,9 +49,9 @@ export function useSSE() {
     if (!listenersRef.current.has(type)) {
       listenersRef.current.set(type, new Set());
     }
-    listenersRef.current.get(type)!.add(handler);
+    listenersRef.current.get(type)!.add(handler as any);
     return () => {
-      listenersRef.current.get(type)?.delete(handler);
+      listenersRef.current.get(type)?.delete(handler as any);
     };
   }, []);
 
@@ -105,7 +105,7 @@ export function useDashboardLive(
                   ...device,
                   status: payload.status || device.status,
                   lastPing: payload.latency ?? device.lastPing,
-                  lastSeen: payload.latency !== null ? payload.timestamp : device.lastSeen,
+                  lastSeen: payload.latency !== null ? (payload.timestamp || null) : device.lastSeen,
                 }
               : device
           )
@@ -141,7 +141,7 @@ export function useDeviceLive(deviceId: string) {
     const unsubPing = on<LiveUpdatePayload & { type: "ping" }>("ping", (result) => {
       if (result.deviceId === deviceId) {
         setPingResults((prev) => [...prev.slice(-99), {
-          latency: result.latency,
+          latency: result.latency ?? null,
           status: result.status || "unknown",
           timestamp: result.timestamp || new Date().toISOString(),
         }]);

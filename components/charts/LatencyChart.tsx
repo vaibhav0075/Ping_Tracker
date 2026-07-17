@@ -15,7 +15,7 @@ import type { PingHistoryEntry } from "@/types";
 
 interface LatencyChartProps {
   data: PingHistoryEntry[];
-  liveData?: { latency: number | null; timestamp: string }[];
+  liveData?: { latency: number | null; timestamp: string; status: string }[];
 }
 
 export function LatencyChart({ data, liveData = [] }: LatencyChartProps) {

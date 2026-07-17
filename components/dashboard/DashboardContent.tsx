@@ -22,16 +22,19 @@ function AnimatedStatCard({
   isLatency,
 }: {
   title: string;
-  value: number;
+  value: number | null;
   icon: typeof Server;
   color: "blue" | "green" | "red" | "purple";
   isLatency?: boolean;
 }) {
-  const animated = useAnimatedCounter(value);
+  const animated = useAnimatedCounter(value ?? 0);
+  const displayValue = value === null 
+    ? "—" 
+    : (isLatency ? formatLatency(animated) : animated);
   return (
     <StatCard
       title={title}
-      value={isLatency ? formatLatency(animated) : animated}
+      value={displayValue}
       icon={icon}
       color={color}
     />

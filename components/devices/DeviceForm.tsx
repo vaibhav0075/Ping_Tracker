@@ -1,5 +1,6 @@
 "use client";
 
+import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { deviceSchema, type DeviceInput } from "@/lib/validations";
@@ -24,6 +25,7 @@ export function DeviceForm({
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<DeviceInput>({
+    // @ts-ignore: Type mismatch between zod schema and react-hook-form resolver options
     resolver: zodResolver(deviceSchema),
     defaultValues: {
       name: device?.name ?? "",
@@ -35,7 +37,7 @@ export function DeviceForm({
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={handleSubmit(onSubmit as any)}
       className="space-y-4 rounded-2xl border border-border bg-card p-6"
     >
       <div className="space-y-2">

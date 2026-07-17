@@ -4,9 +4,13 @@ import type { LiveUpdatePayload } from "@/types";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+interface ControllerWithCleanup extends ReadableStreamDefaultController {
+  _cleanup?: () => void;
+}
+
 export async function GET() {
   const stream = new ReadableStream({
-    start(controller) {
+    start(controller: ControllerWithCleanup) {
       const encoder = new TextEncoder();
       let isOpen = true;
 
@@ -40,11 +44,9 @@ export async function GET() {
         unsubscribe();
       };
 
-      // @ts-expect-error - store cleanup on controller for cancel
       controller._cleanup = cleanup;
     },
-    cancel(controller) {
-      // @ts-expect-error - cleanup stored on controller
+    cancel(controller: ControllerWithCleanup) {
       controller._cleanup?.();
     },
   });

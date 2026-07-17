@@ -288,7 +288,7 @@ export default function DeviceDetailPage() {
         />
         <AnimatedStatCard
           title="Average Latency"
-          value={stats?.averageLatency}
+          value={stats?.averageLatency ?? null}
           icon={Gauge}
           color="purple"
           isLatency
@@ -333,7 +333,7 @@ export default function DeviceDetailPage() {
                     .slice()
                     .reverse()
                     .map((entry, index) => (
-                      <tr key={entry._id || index} className="hover:bg-muted/30">
+                      <tr key={`${entry.timestamp}-${index}`} className="hover:bg-muted/30">
                         <td className="px-4 py-3 text-sm text-muted-foreground">
                           {formatDate(entry.timestamp)}
                         </td>
