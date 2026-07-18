@@ -90,8 +90,12 @@ export default function DeviceDetailPage() {
     loading: historyLoading,
     refresh: refreshHistory,
   } = useDeviceHistory(deviceId, historyQuery);
+  const editHistoryQuery = useMemo(() => ({
+    page: 1,
+    limit: 20,
+  }), []);
   const { result: editHistoryResult, loading: editHistoryLoading, refresh: refreshEditHistory } =
-    useDeviceEditHistory(deviceId, { page: 1, limit: 20 });
+    useDeviceEditHistory(deviceId, editHistoryQuery);
   const { device: liveDevice, pingResults, connected } = useDeviceLive(deviceId);
 
   const device = liveDevice || data?.device;
