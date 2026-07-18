@@ -70,13 +70,14 @@ export interface DeviceDetailStats {
 }
 
 export interface LiveUpdatePayload {
-  type: "status" | "stats" | "ping";
+  type: "status" | "stats" | "ping" | "device:created" | "device:updated" | "device:deleted";
   devices?: Device[];
   stats?: DashboardStats;
   deviceId?: string;
   latency?: number | null;
   status?: DeviceStatus;
   timestamp?: string;
+  device?: Device;
 }
 
 export interface PaginatedResult<T> {

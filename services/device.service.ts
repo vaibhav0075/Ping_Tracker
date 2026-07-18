@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { Device, serializeDevice, type IDevice } from "@/models/Device";
+import { eventBus } from "@/lib/event-bus";
 
 import {
 
@@ -35,9 +36,10 @@ import type {
 
   PaginatedResult,
 
+  LiveUpdatePayload
 } from "@/types";
 
-import type { DeviceCreateInput, DeviceUpdateInput } from "@/lib/validations/device";
+import type { DeviceCreateInput, DeviceUpdateInput } from "@/lib/validations";
 
 import {
 
@@ -290,99 +292,77 @@ export async function getDeviceById(userId: string, id: string) {
 
 
 export async function createDevice(userId: string, input: DeviceCreateInput) {
-
   const device = await Device.create({
-
     ...input,
-
     userId,
-
     status: "unknown",
-
     alertSent: false,
-
     lastPing: null,
-
     lastSeen: null,
-
+  });
+  const enriched = await enrichDeviceWithStats(device);
+  
+  // Publish device created event
+  eventBus.publish({
+    type: "device:created",
+    device: serializeDevice(device),
+    timestamp: new Date().toISOString(),
   });
 
-  return enrichDeviceWithStats(device);
-
+  return enriched;
 }
 
-
-
 export async function updateDevice(
-
   userId: string,
-
   id: string,
-
   input: DeviceUpdateInput
-
 ) {
-
   const device = await findOwnedDevice(userId, id);
-
   if (!device) return null;
-
-
 
   const changes = buildEditChanges(device, input);
 
-
-
   if (changes.length > 0) {
-
     await DeviceEditHistory.create({
-
       deviceId: device._id,
-
       userId,
-
       changes,
-
     });
-
   }
 
-
-
   Object.assign(device, input);
-
   await device.save();
+  const enriched = await enrichDeviceWithStats(device);
 
+  // Publish device updated event
+  eventBus.publish({
+    type: "device:updated",
+    deviceId: device._id.toString(),
+    device: serializeDevice(device),
+    timestamp: new Date().toISOString(),
+  });
 
-
-  return enrichDeviceWithStats(device);
-
+  return enriched;
 }
 
-
-
 export async function deleteDevice(userId: string, id: string): Promise<boolean> {
-
   const device = await findOwnedDevice(userId, id);
-
   if (!device) return false;
 
-
-
   await Promise.all([
-
     PingHistory.deleteMany({ deviceId: id }),
-
     DeviceEditHistory.deleteMany({ deviceId: id }),
-
     Device.deleteOne({ _id: id, userId }),
-
   ]);
 
-
+  // Publish device deleted event
+  eventBus.publish({
+    type: "device:deleted",
+    deviceId: id,
+    timestamp: new Date().toISOString(),
+  });
 
   return true;
-
 }
 
 

@@ -113,10 +113,37 @@ export function useDashboardLive(
       }
     });
 
+    const unsubDeviceCreated = on<LiveUpdatePayload & { type: "device:created" }>("device:created", (payload) => {
+      if (payload.device) {
+        setDevices((prev) => [...prev, payload.device as any]);
+      }
+    });
+
+    const unsubDeviceUpdated = on<LiveUpdatePayload & { type: "device:updated" }>("device:updated", (payload) => {
+      if (payload.deviceId && payload.device) {
+        setDevices((prev) =>
+          prev.map((device) => 
+            device._id === payload.deviceId ? (payload.device! as any) : device
+          )
+        );
+      }
+    });
+
+    const unsubDeviceDeleted = on<LiveUpdatePayload & { type: "device:deleted" }>("device:deleted", (payload) => {
+      if (payload.deviceId) {
+        setDevices((prev) =>
+          prev.filter((device) => device._id !== payload.deviceId)
+        );
+      }
+    });
+
     return () => {
       unsubStats();
       unsubStatus();
       unsubPing();
+      unsubDeviceCreated();
+      unsubDeviceUpdated();
+      unsubDeviceDeleted();
     };
   }, [on]);
 
@@ -148,9 +175,16 @@ export function useDeviceLive(deviceId: string) {
       }
     });
 
+    const unsubDeviceUpdated = on<LiveUpdatePayload & { type: "device:updated" }>("device:updated", (payload) => {
+      if (payload.deviceId === deviceId && payload.device) {
+        setDevice(payload.device);
+      }
+    });
+
     return () => {
       unsubStatus();
       unsubPing();
+      unsubDeviceUpdated();
     };
   }, [on, deviceId]);
 

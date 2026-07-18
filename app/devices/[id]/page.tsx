@@ -38,6 +38,11 @@ import {
   exportToCSV,
   getConnectionQuality,
 } from "@/utils";
+import {
+  calculateUptimePercent,
+  calculateDowntimeMs,
+  latencyStats,
+} from "@/utils/helpers";
 import type { DeviceInput } from "@/lib/validations";
 
 function AnimatedStatCard({
@@ -96,11 +101,55 @@ export default function DeviceDetailPage() {
   }), []);
   const { result: editHistoryResult, loading: editHistoryLoading, refresh: refreshEditHistory } =
     useDeviceEditHistory(deviceId, editHistoryQuery);
-  const { device: liveDevice, pingResults, connected } = useDeviceLive(deviceId);
+  const { device: liveDevice, pingResults, connected, setDevice } = useDeviceLive(deviceId);
+
+  // Combine initial history with live ping results
+  const combinedHistory = useMemo(() => {
+    const initialHistory = data?.chartData ?? [];
+    // Combine initial + live results, avoid duplicates using timestamp
+    const combined = [...initialHistory];
+    pingResults.forEach((live) => {
+      const exists = combined.some((h) => h.timestamp === live.timestamp);
+      if (!exists) {
+        combined.push({
+          _id: `live-${live.timestamp}`,
+          deviceId,
+          latency: live.latency,
+          status: live.status as any,
+          timestamp: live.timestamp,
+        });
+      }
+    });
+    return combined;
+  }, [data?.chartData, pingResults, deviceId]);
 
   const device = liveDevice || data?.device;
 
-  const stats = data?.stats;
+  // Compute live stats using all history + live device state
+  const stats = useMemo(() => {
+    if (!data?.stats && !device) {
+      return null;
+    }
+    // Calculate from all history and current device state
+    const latencyStatsResult = latencyStats(combinedHistory);
+    const uptimePercent = calculateUptimePercent(
+      combinedHistory,
+      device?.status,
+      device?.lastSeen
+    );
+    const totalDowntimeMs = calculateDowntimeMs(
+      combinedHistory,
+      device?.status,
+      device?.lastSeen
+    );
+    return {
+      averageLatency: latencyStatsResult.avg,
+      maxLatency: latencyStatsResult.max,
+      minLatency: latencyStatsResult.min,
+      uptimePercent,
+      totalDowntimeMs,
+    };
+  }, [combinedHistory, device]);
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this device?")) return;
