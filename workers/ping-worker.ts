@@ -14,7 +14,7 @@ import { Device, serializeDevice } from "@/models/Device";
 import { sendOfflineAlert, sendRecoveryAlert } from "@/services/email.service";
 import {
   cleanupOldHistory,
-  getDashboardStats,
+  getGlobalDashboardStats,
   recordPingResult,
 } from "@/services/device.service";
 import { icmpPing } from "@/services/ping.service";
@@ -100,7 +100,7 @@ async function runPingCycle(): Promise<void> {
 
     await runWithConcurrency(devices, MAX_CONCURRENT_PINGS, processDevice);
 
-    const stats = await getDashboardStats();
+    const stats = await getGlobalDashboardStats();
     const allDevices = await Device.find().sort({ name: 1 });
 
     eventBus.publish({

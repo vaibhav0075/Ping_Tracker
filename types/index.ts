@@ -1,7 +1,14 @@
 export type DeviceStatus = "online" | "offline" | "unknown";
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface Device {
   _id: string;
+  userId: string;
   name: string;
   ip: string;
   email: string;
@@ -20,6 +27,21 @@ export interface PingHistoryEntry {
   latency: number | null;
   status: DeviceStatus;
   timestamp: string;
+}
+
+export interface DeviceEditChange {
+  field: string;
+  oldValue: unknown;
+  newValue: unknown;
+}
+
+export interface DeviceEditHistoryEntry {
+  _id: string;
+  deviceId: string;
+  userId: string;
+  userName?: string;
+  changes: DeviceEditChange[];
+  createdAt: string;
 }
 
 export interface DashboardStats {

@@ -19,11 +19,13 @@ import { toast } from "sonner";
 import {
   useDeviceDetails,
   useDeviceHistory,
+  useDeviceEditHistory,
   deleteDevice,
   updateDevice,
 } from "@/hooks/useDevices";
 import { useDeviceLive, useAnimatedCounter } from "@/hooks/useSocket";
 import { LatencyChart } from "@/components/charts/LatencyChart";
+import { DeviceEditHistoryTable } from "@/components/devices/DeviceEditHistoryTable";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ConnectionQualityBadge } from "@/components/ui/ConnectionQualityBadge";
 import { StatCard, StatCardSkeleton } from "@/components/dashboard/StatCard";
@@ -88,6 +90,8 @@ export default function DeviceDetailPage() {
     loading: historyLoading,
     refresh: refreshHistory,
   } = useDeviceHistory(deviceId, historyQuery);
+  const { result: editHistoryResult, loading: editHistoryLoading, refresh: refreshEditHistory } =
+    useDeviceEditHistory(deviceId, { page: 1, limit: 20 });
   const { device: liveDevice, pingResults, connected } = useDeviceLive(deviceId);
 
   const device = liveDevice || data?.device;
@@ -137,6 +141,8 @@ export default function DeviceDetailPage() {
         toast.success("Device updated");
         setShowEdit(false);
         refresh();
+        refreshHistory();
+        refreshEditHistory();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Failed to update device");
       }
@@ -363,6 +369,14 @@ export default function DeviceDetailPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">Edit History</h2>
+        <DeviceEditHistoryTable
+          entries={editHistoryResult?.data ?? []}
+          loading={editHistoryLoading}
+        />
       </div>
     </div>
   );

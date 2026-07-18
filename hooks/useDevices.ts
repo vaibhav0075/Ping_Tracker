@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import type {
   DashboardStats,
   Device,
+  DeviceEditHistoryEntry,
   DeviceQuery,
   HistoryQuery,
   PaginatedResult,
@@ -173,6 +174,35 @@ export function useDeviceHistory(deviceId: string, query: HistoryQuery) {
       const qs = buildQuery(query as Record<string, string | number | boolean | undefined>);
       const data = await fetchJSON<PaginatedResult<PingHistoryEntry>>(
         `/api/history/${deviceId}?${qs}`
+      );
+      setResult(data);
+    } finally {
+      setLoading(false);
+    }
+  }, [deviceId, query]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { result, loading, refresh };
+}
+
+export function useDeviceEditHistory(
+  deviceId: string,
+  query: { page?: number; limit?: number } = {}
+) {
+  const [result, setResult] = useState<PaginatedResult<DeviceEditHistoryEntry> | null>(
+    null
+  );
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const qs = buildQuery(query as Record<string, string | number | boolean | undefined>);
+      const data = await fetchJSON<PaginatedResult<DeviceEditHistoryEntry>>(
+        `/api/devices/${deviceId}/edit-history?${qs}`
       );
       setResult(data);
     } finally {

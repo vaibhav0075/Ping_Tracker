@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 import type { DeviceStatus } from "@/types";
 
 export interface IDevice extends Document {
+  userId: mongoose.Schema.Types.ObjectId;
   name: string;
   ip: string;
   email: string;
@@ -17,6 +18,11 @@ export interface IDevice extends Document {
 
 const DeviceSchema = new Schema<IDevice>(
   {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     name: { type: String, required: true, trim: true },
     ip: { type: String, required: true, trim: true },
     email: { type: String, required: true, trim: true, lowercase: true },
@@ -43,6 +49,7 @@ export const Device: Model<IDevice> =
 export function serializeDevice(doc: IDevice) {
   return {
     _id: doc._id.toString(),
+    userId: doc.userId.toString(),
     name: doc.name,
     ip: doc.ip,
     email: doc.email,
