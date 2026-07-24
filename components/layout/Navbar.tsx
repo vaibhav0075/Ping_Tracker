@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { Activity, LayoutDashboard, LogOut, Server, Sun, Moon, User } from "lucide-react";
+import { Activity, FileText, LayoutDashboard, LogOut, Server, Sun, Moon, User } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { cn } from "@/utils";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/devices", label: "Devices", icon: Server },
+  { href: "/reports", label: "Reports", icon: FileText },
 ];
 
 export function Navbar() {

@@ -731,4 +731,60 @@ export async function cleanupOldHistory(retentionDays: number): Promise<number> 
 
 }
 
+// Report functions
+export async function getReportData(
+  userId: string,
+  deviceIds: string[],
+  startDate: string,
+  endDate: string
+) {
+  const devices = await Device.find({ 
+    _id: { $in: deviceIds.map(id => new mongoose.Types.ObjectId(id)) },
+    userId 
+  });
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999);
+
+  const history = await PingHistory.find({
+    deviceId: { $in: deviceIds.map(id => new mongoose.Types.ObjectId(id)) },
+    timestamp: { $gte: start, $lte: end }
+  }).sort({ deviceId: 1, timestamp: 1 });
+
+  const reportData = devices.map(device => {
+    const deviceHistory = history.filter(h => h.deviceId.toString() === device._id.toString());
+    const historyWithTimestamps = deviceHistory.map(h => ({
+      status: h.status,
+      timestamp: h.timestamp.toISOString()
+    }));
+    const stats = latencyStats(deviceHistory);
+
+    return {
+      device: serializeDevice(device),
+      uptimePercent: calculateUptimePercent(
+        historyWithTimestamps,
+        device.status,
+        device.lastSeen?.toISOString()
+      ),
+      totalDowntimeMs: calculateDowntimeMs(
+        historyWithTimestamps,
+        device.status,
+        device.lastSeen?.toISOString()
+      ),
+      averageLatency: stats.avg,
+      maxLatency: stats.max,
+      minLatency: stats.min,
+      history: deviceHistory.map(serializePingHistory)
+    };
+  });
+
+  return reportData;
+}
+
+export async function getAllDevicesForReport(userId: string) {
+  const devices = await Device.find({ userId }).sort({ name: 1 });
+  return devices.map(serializeDevice);
+}
+
 

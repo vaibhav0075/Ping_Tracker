@@ -42,7 +42,7 @@ function AnimatedStatCard({
 }
 
 export function DashboardContent() {
-  const { data, loading, error } = useDashboard();
+  const { data, loading, error, refresh } = useDashboard();
 
   const stats = data?.stats ?? {
     totalDevices: 0,
@@ -59,6 +59,15 @@ export function DashboardContent() {
       live.stats;
     }
   }, [data]);
+
+  // Auto-refresh every 15 seconds
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      refresh({ setLoadingState: false });
+    }, 15000);
+
+    return () => clearInterval(intervalId);
+  }, [refresh]);
 
   if (error) {
     return (

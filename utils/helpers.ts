@@ -1,4 +1,5 @@
 import type { ConnectionQuality, DeviceStatus } from "@/types";
+import ExcelJS from "exceljs";
 
 export function formatLatency(ms: number | null | undefined): string {
   if (ms === null || ms === undefined) return "—";
@@ -91,14 +92,11 @@ export function calculateUptimePercent(
   let totalTime = 0;
   let onlineTime = 0;
 
-  // First handle existing history
   if (history.length > 0) {
-    // Sort history from oldest to newest to calculate time gaps
-    const sortedHistory = [...history].sort((a, b) => 
+    const sortedHistory = [...history].sort((a, b) =>
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
 
-    // Calculate time between each history entry
     for (let i = 1; i < sortedHistory.length; i++) {
       const prev = sortedHistory[i - 1];
       const curr = sortedHistory[i];
@@ -110,15 +108,12 @@ export function calculateUptimePercent(
     }
   }
 
-  // Add ongoing time if device is currently offline
   if (currentStatus === "offline" && lastSeen) {
     const lastSeenDate = new Date(lastSeen);
     const ongoingTime = now.getTime() - lastSeenDate.getTime();
     totalTime += ongoingTime;
-    // No online time added for ongoing offline
   }
 
-  // If no time data, return 100%
   if (totalTime === 0) return 100;
 
   return (onlineTime / totalTime) * 100;
@@ -132,14 +127,11 @@ export function calculateDowntimeMs(
   const now = new Date();
   let totalDowntime = 0;
 
-  // Calculate downtime from history
   if (history.length > 0) {
-    // Sort history from oldest to newest
-    const sortedHistory = [...history].sort((a, b) => 
+    const sortedHistory = [...history].sort((a, b) =>
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
 
-    // Calculate time between each history entry for offline periods
     for (let i = 1; i < sortedHistory.length; i++) {
       const prev = sortedHistory[i - 1];
       const curr = sortedHistory[i];
@@ -150,7 +142,6 @@ export function calculateDowntimeMs(
     }
   }
 
-  // Add ongoing downtime if device is still offline
   if (currentStatus === "offline" && lastSeen) {
     const lastSeenDate = new Date(lastSeen);
     totalDowntime += now.getTime() - lastSeenDate.getTime();
@@ -191,6 +182,113 @@ export function exportHistoryToCsv(
     )
     .join("\n");
   return header + body;
+}
+
+export async function exportReportToExcel(
+  reportData: {
+    device: any;
+    uptimePercent: number;
+    totalDowntimeMs: number;
+    averageLatency: number | null;
+    maxLatency: number | null;
+    minLatency: number | null;
+    history: any[];
+  }[],
+  reportType: "summary" | "detailed" | "both" = "both"
+): Promise<Uint8Array> {
+  const workbook = new ExcelJS.Workbook();
+
+  if (reportType === "summary" || reportType === "both") {
+    const summarySheet = workbook.addWorksheet("Summary");
+    summarySheet.columns = [
+      { header: "Device Name", key: "name", width: 20 },
+      { header: "Device IP", key: "ip", width: 15 },
+      { header: "Uptime %", key: "uptime", width: 12 },
+      { header: "Total Downtime", key: "downtime", width: 15 },
+      { header: "Avg Latency (ms)", key: "avgLatency", width: 15 },
+      { header: "Min Latency (ms)", key: "minLatency", width: 15 },
+      { header: "Max Latency (ms)", key: "maxLatency", width: 15 },
+    ];
+
+    reportData.forEach((d) => {
+      summarySheet.addRow({
+        name: d.device.name,
+        ip: d.device.ip,
+        uptime: `${d.uptimePercent.toFixed(2)}%`,
+        downtime: formatDuration(d.totalDowntimeMs),
+        avgLatency: d.averageLatency,
+        minLatency: d.minLatency,
+        maxLatency: d.maxLatency,
+      });
+    });
+  }
+
+  if (reportType === "detailed" || reportType === "both") {
+    const detailedSheet = workbook.addWorksheet("Detailed");
+    detailedSheet.columns = [
+      { header: "Device Name", key: "name", width: 20 },
+      { header: "Device IP", key: "ip", width: 15 },
+      { header: "Timestamp", key: "timestamp", width: 25 },
+      { header: "Status", key: "status", width: 12 },
+      { header: "Latency (ms)", key: "latency", width: 15 },
+    ];
+
+    reportData.forEach((d) => {
+      d.history.forEach((h) => {
+        detailedSheet.addRow({
+          name: d.device.name,
+          ip: d.device.ip,
+          timestamp: new Date(h.timestamp).toLocaleString(),
+          status: h.status,
+          latency: h.latency,
+        });
+      });
+    });
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return new Uint8Array(buffer);
+}
+
+export function exportReportToCsv(
+  reportData: {
+    device: any;
+    uptimePercent: number;
+    totalDowntimeMs: number;
+    averageLatency: number | null;
+    maxLatency: number | null;
+    minLatency: number | null;
+    history: any[];
+  }[],
+  reportType: "summary" | "detailed" | "both" = "both"
+): string {
+  let csv = "";
+
+  if (reportType === "summary" || reportType === "both") {
+    csv += "Type,Device Name,Device IP,Uptime %,Total Downtime,Avg Latency (ms),Min Latency (ms),Max Latency (ms)\n";
+    reportData.forEach((d) => {
+      csv += `"Summary","${d.device.name}","${d.device.ip}","${d.uptimePercent.toFixed(2)}%","${formatDuration(d.totalDowntimeMs)}","${d.averageLatency ?? ''}","${d.minLatency ?? ''}","${d.maxLatency ?? ''}"\n`;
+    });
+    csv += "\n";
+  }
+
+  if (reportType === "detailed" || reportType === "both") {
+    csv += "Type,Device Name,Device IP,Uptime %,Total Downtime,Avg Latency (ms),Min Latency (ms),Max Latency (ms),Timestamp,Status,Latency (ms)\n";
+    const body = reportData
+      .flatMap((d) =>
+        d.history.length > 0 ?
+          d.history.map((h) =>
+            `"Detailed","${d.device.name}","${d.device.ip}","${d.uptimePercent.toFixed(2)}%","${formatDuration(d.totalDowntimeMs)}","${d.averageLatency ?? ''}","${d.minLatency ?? ''}","${d.maxLatency ?? ''}","${h.timestamp}","${h.status}","${h.latency ?? ''}"`
+          )
+          : [
+            `"Detailed","${d.device.name}","${d.device.ip}","${d.uptimePercent.toFixed(2)}%","${formatDuration(d.totalDowntimeMs)}","${d.averageLatency ?? ''}","${d.minLatency ?? ''}","${d.maxLatency ?? ''}","","",""`
+          ]
+      )
+      .join("\n");
+    csv += body;
+  }
+
+  return csv;
 }
 
 export async function runWithConcurrency<T, R>(

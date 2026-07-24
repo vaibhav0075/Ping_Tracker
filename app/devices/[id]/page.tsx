@@ -78,6 +78,90 @@ function AnimatedStatCard({
   );
 }
 
+// Move EditForm outside to prevent re-creation on live updates
+interface EditFormProps {
+  device: any;
+  deviceId: string;
+  onClose: () => void;
+  refresh: () => void;
+  refreshHistory: () => void;
+  refreshEditHistory: () => void;
+}
+
+function EditForm({ device, deviceId, onClose, refresh, refreshHistory, refreshEditHistory }: EditFormProps) {
+  const [formData, setFormData] = useState<DeviceInput>({
+    name: device?.name || "",
+    ip: device?.ip || "",
+    email: device?.email || "",
+    enabled: device?.enabled ?? true,
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await updateDevice(deviceId, formData);
+      toast.success("Device updated");
+      onClose();
+      refresh();
+      refreshHistory();
+      refreshEditHistory();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update device");
+    }
+  };
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 rounded-2xl border border-border bg-card p-6 mb-6"
+    >
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label htmlFor="name">Name</Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="ip">IP / Hostname</Label>
+          <Input
+            id="ip"
+            value={formData.ip}
+            onChange={(e) => setFormData({ ...formData, ip: e.target.value })}
+          />
+        </div>
+        <div className="space-y-1 sm:col-span-2">
+          <Label htmlFor="email">Alert Email</Label>
+          <Input
+            id="email"
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="enabled"
+            checked={formData.enabled}
+            onChange={(e) =>
+              setFormData({ ...formData, enabled: e.target.checked })
+            }
+          />
+          <Label htmlFor="enabled">Enable Monitoring</Label>
+        </div>
+      </div>
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="secondary" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button type="submit">Save Changes</Button>
+      </div>
+    </form>
+  );
+}
+
 export default function DeviceDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -102,6 +186,16 @@ export default function DeviceDetailPage() {
   const { result: editHistoryResult, loading: editHistoryLoading, refresh: refreshEditHistory } =
     useDeviceEditHistory(deviceId, editHistoryQuery);
   const { device: liveDevice, pingResults, connected, setDevice } = useDeviceLive(deviceId);
+
+  // Auto-refresh every 15 seconds
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      refresh({ setLoadingState: false });
+      refreshHistory({ setLoadingState: false });
+    }, 15000);
+
+    return () => clearInterval(intervalId);
+  }, [refresh, refreshHistory]);
 
   // Combine initial history with live ping results
   const combinedHistory = useMemo(() => {
@@ -177,80 +271,6 @@ export default function DeviceDetailPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to export history");
     }
-  };
-
-  const EditForm = () => {
-    const [formData, setFormData] = useState<DeviceInput>({
-      name: device?.name || "",
-      ip: device?.ip || "",
-      email: device?.email || "",
-      enabled: device?.enabled ?? true,
-    });
-
-    const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      try {
-        await updateDevice(deviceId, formData);
-        toast.success("Device updated");
-        setShowEdit(false);
-        refresh();
-        refreshHistory();
-        refreshEditHistory();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Failed to update device");
-      }
-    };
-
-    return (
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-4 rounded-2xl border border-border bg-card p-6 mb-6"
-      >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-1">
-            <Label htmlFor="name">Name</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="ip">IP / Hostname</Label>
-            <Input
-              id="ip"
-              value={formData.ip}
-              onChange={(e) => setFormData({ ...formData, ip: e.target.value })}
-            />
-          </div>
-          <div className="space-y-1 sm:col-span-2">
-            <Label htmlFor="email">Alert Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="enabled"
-              checked={formData.enabled}
-              onChange={(e) =>
-                setFormData({ ...formData, enabled: e.target.checked })
-              }
-            />
-            <Label htmlFor="enabled">Enable Monitoring</Label>
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="secondary" onClick={() => setShowEdit(false)}>
-            Cancel
-          </Button>
-          <Button type="submit">Save Changes</Button>
-        </div>
-      </form>
-    );
   };
 
   if (loading && !data) {
@@ -329,7 +349,16 @@ export default function DeviceDetailPage() {
         </div>
       </div>
 
-      {showEdit && <EditForm />}
+      {showEdit && (
+        <EditForm
+          device={device}
+          deviceId={deviceId}
+          onClose={() => setShowEdit(false)}
+          refresh={refresh}
+          refreshHistory={refreshHistory}
+          refreshEditHistory={refreshEditHistory}
+        />
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <AnimatedStatCard

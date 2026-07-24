@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { Plus, Download } from "lucide-react";
 import { toast } from "sonner";
 import { DeviceForm } from "@/components/devices/DeviceForm";
@@ -101,6 +101,15 @@ export default function DevicesPage() {
     );
     toast.success("Exported to CSV");
   };
+
+  // Auto-refresh every 15 seconds
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      refresh({ setLoadingState: false });
+    }, 15000);
+
+    return () => clearInterval(intervalId);
+  }, [refresh]);
 
   const displayDevices =
     live.devices.length > 0 && live.connected ? live.devices : result?.data ?? [];

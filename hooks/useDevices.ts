@@ -43,9 +43,9 @@ export function useDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async ({ setLoadingState } = { setLoadingState: true }) => {
     try {
-      setLoading(true);
+      if (setLoadingState) setLoading(true);
       const result = await fetchJSON<{
         stats: DashboardStats;
         devices: (Device & { uptimePercent: number })[];
@@ -55,7 +55,7 @@ export function useDashboard() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load dashboard");
     } finally {
-      setLoading(false);
+      if (setLoadingState) setLoading(false);
     }
   }, []);
 
@@ -72,8 +72,8 @@ export function useDevices(query: DeviceQuery) {
   > | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(async ({ setLoadingState } = { setLoadingState: true }) => {
+    if (setLoadingState) setLoading(true);
     try {
       const qs = buildQuery(query as Record<string, string | number | boolean | undefined>);
       const data = await fetchJSON<PaginatedResult<Device & { uptimePercent: number }>>(
@@ -81,7 +81,7 @@ export function useDevices(query: DeviceQuery) {
       );
       setResult(data);
     } finally {
-      setLoading(false);
+      if (setLoadingState) setLoading(false);
     }
   }, [query]);
 
@@ -127,8 +127,8 @@ export function useDeviceDetails(deviceId: string) {
   } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(async ({ setLoadingState } = { setLoadingState: true }) => {
+    if (setLoadingState) setLoading(true);
     try {
       const result = await fetchJSON<{
         device: Device;
@@ -151,7 +151,7 @@ export function useDeviceDetails(deviceId: string) {
         },
       });
     } finally {
-      setLoading(false);
+      if (setLoadingState) setLoading(false);
     }
   }, [deviceId]);
 
@@ -168,8 +168,8 @@ export function useDeviceHistory(deviceId: string, query: HistoryQuery) {
   );
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(async ({ setLoadingState } = { setLoadingState: true }) => {
+    if (setLoadingState) setLoading(true);
     try {
       const qs = buildQuery(query as Record<string, string | number | boolean | undefined>);
       const data = await fetchJSON<PaginatedResult<PingHistoryEntry>>(
@@ -177,7 +177,7 @@ export function useDeviceHistory(deviceId: string, query: HistoryQuery) {
       );
       setResult(data);
     } finally {
-      setLoading(false);
+      if (setLoadingState) setLoading(false);
     }
   }, [deviceId, query]);
 
